@@ -1,8 +1,9 @@
-process align_dna {
+process align {
     input:
     val sampleId
+    val mm2opts
     path fasta_file
-    path bam_file
+    path fastq_file
 
     output:
     path '*.bam'
@@ -10,7 +11,7 @@ process align_dna {
 
     script:
     """
-    dorado aligner ${fasta_file} ${bam_file} > ${sampleId}.sam | samtools sort --threads <num_threads> > ${sampleId}.srt.bam 
+    dorado aligner -t ${cpus} ${mm2opts} ${fasta_file} ${fastq_file} > ${sampleId}.sam | samtools sort --threads ${cpus} > ${sampleId}.srt.bam 
     samtools index ${sampleId}.srt.bam
     """
 }
