@@ -1,56 +1,58 @@
 process mod_basecalling_rna {
+    container 'staphb/dorado:0.9.0-cuda12.2.0'
+    containerOptions '--gpus all'
     input:
     val sampleId
     path pod5_folder
 
     output:
-    path '*.fastq'
+    path '*.bam'
 
     script:
     """
     dorado basecaller -r \
     --device "cuda:all" \
     --emit-moves \
-    --emit-fastq \
     sup,m5C,m6A_DRACH,pseU \
-    ${pod5_folder} > ${sampleId}.fastq
+    ${pod5_folder} > ${sampleId}.bam
     """
 }
 
 process basecalling_rna {
+    container 'staphb/dorado:0.9.0-cuda12.2.0'
+    containerOptions '--gpus all'
     input:
-    val sampleId
-    path pod5_folder
+    tuple val(sampleId), path(pod5_folder)
 
     output:
-    path '*.fastq'
+    path '*.bam'
 
     script:
     """
     dorado basecaller -r \
     --device "cuda:all" \
-    --emit-fastq \
     --emit-moves \
     hac \
-    ${pod5_folder} > ${sampleId}.fastq
+    ${pod5_folder} > ${sampleId}.bam
     """
 }
 
 process basecalling_dna {
+    container 'staphb/dorado:0.9.0-cuda12.2.0'
+    containerOptions '--gpus all'
     input:
     val sampleId
     path pod5_folder
 
     output:
-    path '*.fastq'
+    path '*.bam'
 
     script:
     """
     dorado basecaller -r \
     --device "cuda:all" \
-    --emit-fastq \
     --emit-moves \
     hac \
-    ${pod5_folder} > ${sampleId}.fastq
+    ${pod5_folder} > ${sampleId}.bam
     """
 }

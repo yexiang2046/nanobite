@@ -1,0 +1,3 @@
+SampleId	treatment	pod5_path
+AA1_1	AA	data/AA1_1
+BHI2_1	BHI	data/BHI2_1
