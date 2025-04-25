@@ -41,23 +41,16 @@ workflow RNA_BASECALLING {
 
         // Run alignment for each sample
         align(
-            basecalling_rna.out.map { bam ->
-                tuple(params.mm2opts, sample_ch.map { id, treatment, _ -> id }.first(), bam, file(params.reference))
-            }
+            basecalling_rna.out
+                .map { bam ->
+                    tuple(params.mm2opts, bam.getSimpleName(), bam, file(params.reference))
+                }
         )
 
-        // Run NanoCount for transcript abundance estimation
-        nanocount(
-            align.out[0].map { bam ->
-                tuple(bam, sample_ch.map { id, _, _ -> id }.first())
-            }
-        )
 
     emit:
         bam = align.out[0]  // The sorted BAM file
         bai = align.out[1]  // The BAM index file
-        counts = nanocount.out.counts  // Transcript counts
-        log = nanocount.out.log  // NanoCount log files
         samples = sample_ch // emit sample channel for downstream processing
 }
 
