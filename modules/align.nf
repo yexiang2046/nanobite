@@ -8,11 +8,11 @@ process align {
     tuple val(mm2opts), val(sampleId), path(bam_file), path(fasta_file)
 
     output:
-    path "${sampleId}.sam"
+    path "${sampleId}_aligned.bam"
 
     script:
     """
-    dorado aligner -t ${task.cpus} ${mm2opts} ${fasta_file} ${bam_file} > ${sampleId}.sam
+    dorado aligner -t ${task.cpus} ${mm2opts} ${fasta_file} ${bam_file} > ${sampleId}_aligned.bam
     """
 }
 
@@ -22,15 +22,15 @@ process process_sam {
     publishDir "${params.output_dir}/bam", mode: 'copy'
 
     input:
-    path sam_file
+    path bam_file
 
     output:
-    path "${sam_file.getSimpleName()}.srt.bam"
-    path "${sam_file.getSimpleName()}.srt.bam.bai"
+    path "${bam_file.getSimpleName()}.srt.bam"
+    path "${bam_file.getSimpleName()}.srt.bam.bai"
 
     script:
     """
-    samtools sort --threads ${task.cpus} ${sam_file} > ${sam_file.getSimpleName()}.srt.bam
-    samtools index ${sam_file.getSimpleName()}.srt.bam
+    samtools sort --threads ${task.cpus} ${bam_file} > ${bam_file.getSimpleName()}.srt.bam
+    samtools index ${bam_file.getSimpleName()}.srt.bam
     """
 }
