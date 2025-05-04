@@ -36,7 +36,11 @@ process nanopack_compare {
         --bam ${bams} \
         --outdir nanocomp_results \
         --threads ${task.cpus} \
-        --plots dot kde hex
+        --plots dot kde hex \
+        --minlength 0 \
+        --maxlength 100000 \
+        --minqual 0 \
+        --maxqual 100
     """
 }
 
@@ -66,11 +70,14 @@ process nanopack_phasing {
     tuple val(sample_id), path(bam)
     
     output:
-    path("${sample_id}_phasing.pdf"), emit: phasing
+    path("${sample_id}_phasing.html"), emit: phasing
     
     script:
     """
-    phasius ${bam} -o ${sample_id}_phasing.pdf
+    phasius \
+        --output ${sample_id}_phasing.html \
+        --region all \
+        ${bam}
     """
 }
 
@@ -83,10 +90,10 @@ process nanopack_overview {
     tuple val(sample_id), path(bam)
     
     output:
-    path("${sample_id}_overview.pdf"), emit: overview
+    path("${sample_id}_overview"), emit: overview
     
     script:
     """
-    kyber ${bam} -o ${sample_id}_overview.pdf
+    kyber -o ${sample_id}_overview ${bam} 
     """
 } 

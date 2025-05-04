@@ -12,6 +12,7 @@ include {
     nanopack_phasing;
     nanopack_overview 
 } from '../modules/nanopack_qc.nf'
+include { prepare_deseq2, deseq2_analysis } from '../modules/deseq2.nf'
 
 // Create a channel from sample info file
 def create_sample_channel(sample_info) {
@@ -87,11 +88,8 @@ workflow DRS_PIPELINE {
         // Run nanopack QC on aligned BAM files
         nanopack_plot(bam_ch)
         nanopack_stats(bam_ch)
-        nanopack_phasing(bam_ch)
-        nanopack_overview(bam_ch)
         
-        // Compare all BAM files
-        nanopack_compare(bam_ch.collect())
+        
 
         // Run nanocount for transcript quantification
         nanocount(
@@ -104,13 +102,10 @@ workflow DRS_PIPELINE {
     emit:
         bam = process_sam.out[0]      // The sorted BAM file
         bai = process_sam.out[1]      // The BAM index file
-        counts = nanocount.out  // Transcript counts
-        samples = sample_ch     // Sample information
+        counts = nanocount.out        // Transcript counts
+        samples = sample_ch           // Sample information
         qc_plots = nanopack_plot.out.plots
         qc_stats = nanopack_stats.out.stats
-        qc_phasing = nanopack_phasing.out.phasing
-        qc_overview = nanopack_overview.out.overview
-        qc_comparison = nanopack_compare.out.comparison
 }
 
 // Entry point
