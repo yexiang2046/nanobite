@@ -67,7 +67,7 @@ workflow {
     }
 
     // Set default parameters
-    params.container = params.container ?: 'deseq2:v1.0.0'
+    params.container = params.container ?: 'xiang2019/deseq2:v1.0.0'
     params.output_dir = params.output_dir ?: 'results/deseq2'
 
     DIFF_EXPRESSION(
