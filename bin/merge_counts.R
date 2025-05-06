@@ -8,10 +8,6 @@ if (length(args) < 2) {
 
 sample_info <- args[1]
 count_dir <- args[2]
-output_dir <- "results/deseq2/input"
-
-# Create output directory if it doesn't exist
-dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
 
 # Read sample info
 samples <- read.table(sample_info, header = TRUE, sep = "\t", stringsAsFactors = FALSE)
@@ -59,7 +55,7 @@ merged_counts[is.na(merged_counts)] <- 0
 
 # Write merged count matrix
 write.table(merged_counts, 
-            file = file.path(output_dir, "count_matrix.txt"),
+            file = "count_matrix.txt",
             sep = "\t", 
             quote = FALSE, 
             row.names = FALSE)
@@ -71,7 +67,7 @@ design_matrix <- data.frame(
     condition = samples$treatment
 )
 write.table(design_matrix,
-            file = file.path(output_dir, "design_matrix.txt"),
+            file = "design_matrix.txt",
             sep = "\t",
             quote = FALSE,
             row.names = FALSE)
@@ -81,6 +77,6 @@ cat("\nFinal count matrix:\n")
 print(head(merged_counts, 5))
 cat("\nNumber of columns in count matrix:", ncol(merged_counts), "\n")
 
-cat("\nDone! Output files are in", output_dir, "\n")
+cat("\nDone! Output files are in current directory\n")
 cat("- count_matrix.txt: Merged count matrix\n")
 cat("- design_matrix.txt: Sample design matrix\n") 
