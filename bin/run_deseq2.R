@@ -21,6 +21,9 @@ if (!require("ggplot2")) install.packages("ggplot2", repos="https://cloud.r-proj
 count_matrix <- read.table(count_matrix_file, header=TRUE, sep="\t", row.names=1)
 design_matrix <- read.table(design_matrix_file, header=TRUE, sep="\t")
 
+# Convert counts to integers
+count_matrix <- round(count_matrix)
+
 # Create DESeq2 dataset
 dds <- DESeqDataSetFromMatrix(
     countData = count_matrix,
