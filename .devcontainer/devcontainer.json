@@ -1,31 +1,22 @@
 {
-    "name": "Nanobite Development",
+    "name": "Modkit Development",
     "build": {
         "dockerfile": "../Dockerfile",
         "context": ".."
     },
-    "features": {
-        "ghcr.io/devcontainers/features/nvidia-cuda:1": {
-            "installCudnn": true
-        }
-    },
-    "runArgs": [
-        "--gpus",
-        "all"
-    ],
     "customizations": {
         "vscode": {
             "extensions": [
-                "ms-vscode.cpptools",
-                "ms-vscode.cmake-tools",
-                "nextflow.nextflow"
+                "rust-lang.rust-analyzer",
+                "serayuzgur.crates",
+                "tamasfe.even-better-toml"
             ]
         }
     },
-    "remoteUser": "root",
     "mounts": [
-        "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached"
+        "source=${localWorkspaceFolder},target=/data,type=bind,consistency=cached"
     ],
-    "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
-    "workspaceFolder": "/workspace"
+    "remoteUser": "root",
+    "workspaceMount": "source=${localWorkspaceFolder},target=/data,type=bind",
+    "workspaceFolder": "/data"
 } 

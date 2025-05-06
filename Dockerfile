@@ -1,29 +1,42 @@
-FROM nvidia/cuda:12.1.0-runtime-ubuntu22.04
+FROM bioconductor/bioconductor_docker:RELEASE_3_18
 
-# Set environment variables
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Install required dependencies
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
-    wget \
-    tar \
-    samtools \
+    libcurl4-openssl-dev \
+    libssl-dev \
+    libxml2-dev \
+    libfontconfig1-dev \
+    libharfbuzz-dev \
+    libfribidi-dev \
+    libfreetype6-dev \
+    libpng-dev \
+    libtiff5-dev \
+    libjpeg-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Create directories
-WORKDIR /opt/dorado
+# Install required R packages
+RUN R -e "install.packages(c('optparse', 'tidyverse', 'pheatmap', 'RColorBrewer'), repos='https://cloud.r-project.org/')"
 
-# Download and install Dorado v0.9.5
-RUN wget https://cdn.oxfordnanoportal.com/software/analysis/dorado-0.9.5-linux-x64.tar.gz \
-    && tar -xzvf dorado-0.9.5-linux-x64.tar.gz \
-    && rm dorado-0.9.5-linux-x64.tar.gz
+# Install Bioconductor packages
+RUN R -e "BiocManager::install(c('DESeq2', 'BiocParallel'), update=FALSE, ask=FALSE)"
 
-# Add Dorado to PATH
-ENV PATH="/opt/dorado/dorado-0.9.5-linux-x64/bin:${PATH}"
-ENV LD_LIBRARY_PATH="/opt/dorado/dorado-0.9.5-linux-x64/lib:${LD_LIBRARY_PATH}"
+# Set working directory
+WORKDIR /data
 
-# Set working directory for the application
-WORKDIR /workspace
+# Create output directories
+RUN mkdir -p /data/results/deseq2/results \
+    /data/results/deseq2/plots
 
-# Default command
-CMD ["bash"] 
+# Set environment variables
+ENV R_LIBS_USER=/usr/local/lib/R/site-library
+
+# Copy R scripts
+COPY bin/prepare_deseq2.R /usr/local/bin/
+COPY bin/run_deseq2.R /usr/local/bin/
+
+# Make scripts executable
+RUN chmod +x /usr/local/bin/prepare_deseq2.R \
+    /usr/local/bin/run_deseq2.R
+
+# Set default command
+CMD ["R"] 

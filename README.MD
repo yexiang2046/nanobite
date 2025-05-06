@@ -38,12 +38,24 @@ sample2	treatment	/path/to/sample2/pod5
 
 ## Usage
 
-Run the pipeline using:
+### Full Pipeline
+
+Run the complete pipeline using:
 
 ```bash
 nextflow run workflows/DRS_transcriptomic_pipeline.nf \
     --sample_info sample_info.txt \
     --reference reference.fasta
+```
+
+### Differential Expression Analysis Only
+
+If you already have count files from a previous run, you can run just the differential expression analysis:
+
+```bash
+nextflow run workflows/differential_expression.nf \
+    --sample_info sample_info.txt \
+    --count_files path/to/counts
 ```
 
 ### Optional Parameters
@@ -91,6 +103,11 @@ The pipeline uses DESeq2 for differential expression analysis:
 - Performs statistical testing
 - Generates visualizations (MA plots, PCA, heatmaps)
 - Identifies differentially expressed transcripts
+
+The differential expression analysis can be run:
+1. As part of the full pipeline
+2. Independently using the `differential_expression.nf` workflow
+3. With custom parameters for filtering and visualization
 
 ## Citation
 
