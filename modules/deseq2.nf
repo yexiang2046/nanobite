@@ -17,11 +17,12 @@ process prepare_deseq2 {
     #!/bin/bash
     set -e
     
-    # Make the R script executable
-    chmod +x ${merge_script}
+    # Copy and make the R script executable
+    cp ${merge_script} merge_counts.R
+    chmod +x merge_counts.R
     
     # Run the merge script
-    ${merge_script} "${sample_info}" "${count_dir}"
+    ./merge_counts.R "${sample_info}" "${count_dir}"
     """
 }
 
@@ -44,10 +45,11 @@ process deseq2_analysis {
     #!/bin/bash
     set -e
     
-    # Make the R script executable
-    chmod +x ${run_script}
+    # Copy and make the R script executable
+    cp ${run_script} run_deseq2.R
+    chmod +x run_deseq2.R
     
     # Run DESeq2 analysis
-    ${run_script} "${count_matrix}" "${design_matrix}"
+    ./run_deseq2.R "${count_matrix}" "${design_matrix}"
     """
 } 
