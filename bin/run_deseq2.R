@@ -38,7 +38,7 @@ dds <- DESeq(dds)
 res <- results(dds)
 
 # Save results
-write.table(res, "results/differential_expression.tsv", sep="\t", quote=FALSE)
+write.csv(res, "results/differential_expression.csv", quote=FALSE)
 
 # Create MA plot
 pdf("plots/MA_plot.pdf")
