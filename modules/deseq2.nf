@@ -14,7 +14,7 @@ process prepare_deseq2 {
     script:
     """
     # Run the merge script
-    merge_counts.sh "${sample_info}" "${count_dir}"
+    merge_counts.R "${sample_info}" "${count_dir}"
     """
 }
 
