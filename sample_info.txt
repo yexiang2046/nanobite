@@ -1,9 +1,9 @@
 SampleId	treatment	pod5_path
 AA1_1	AA	data/AA1_1
-AA1_2   AA  data/AA1_2
-AA2_1   AA  data/AA2_1
-AA2_2   AA  data/AA2_2
-BHI2_1  BHI data/BHI2_1
-BHI2_2  BHI data/BHI2_2
-BHI2_3  BHI data/BHI2_3
-BHI3_2  BHI data/BHI3_2
+AA1_2	AA	data/AA1_2
+AA2_1	AA	data/AA2_1
+AA2_2	AA	data/AA2_2
+BHI2_1	BHI	data/BHI2_1
+BHI2_2	BHI	data/BHI2_2
+BHI2_3	BHI	data/BHI2_3
+BHI3_2	BHI	data/BHI3_2

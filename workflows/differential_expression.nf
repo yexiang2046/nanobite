@@ -1,7 +1,8 @@
 nextflow.enable.dsl=2
 
 // Import modules
-include { prepare_deseq2, deseq2_analysis } from '../modules/deseq2.nf'
+include { prepare_deseq2 } from '../modules/deseq2.nf'
+include { deseq2_analysis } from '../modules/deseq2.nf'
 
 // Create a channel from sample info file
 def create_sample_channel(sample_info) {
@@ -33,22 +34,29 @@ def create_sample_channel(sample_info) {
 workflow DIFF_EXPRESSION {
     take:
         sample_info  // path to sample info file
-        count_files  // path to count files directory
+        count_dir    // path to count files directory
 
     main:
-        // Create sample channel
-        sample_ch = create_sample_channel(sample_info)
+        // Validate sample info file
+        if (!file(sample_info).exists()) {
+            error "Sample info file not found: ${sample_info}"
+        }
+        if (!file(count_dir).exists()) {
+            error "Count directory not found: ${count_dir}"
+        }
 
         // Prepare DESeq2 input files
         prepare_deseq2(
-            Channel.fromPath("${count_files}/*_counts.txt").collect(),
-            file(sample_info)
+            file(count_dir),
+            file(sample_info),
+            file('bin/merge_counts.R')
         )
 
         // Run DESeq2 analysis
         deseq2_analysis(
             prepare_deseq2.out.count_matrix,
-            prepare_deseq2.out.design_matrix
+            prepare_deseq2.out.design_matrix,
+            file('bin/run_deseq2.R')
         )
 
     emit:
@@ -62,8 +70,8 @@ workflow {
     if (!params.sample_info) {
         error "Sample info file is required: --sample_info sample_info.txt"
     }
-    if (!params.count_files) {
-        error "Count files directory is required: --count_files path/to/counts"
+    if (!params.count_dir) {
+        error "Count files directory is required: --count_dir path/to/counts"
     }
 
     // Set default parameters
@@ -72,6 +80,6 @@ workflow {
 
     DIFF_EXPRESSION(
         file(params.sample_info),
-        params.count_files
+        params.count_dir
     )
 } 

@@ -1,47 +1,53 @@
 // Prepare input files for DESeq2 analysis
 process prepare_deseq2 {
-    publishDir "${params.output_dir}/deseq2/input", mode: 'copy'
     container "${params.container}"
+    publishDir "${params.output_dir}/input", mode: 'copy'
     
     input:
-    path count_files
+    path count_dir
     path sample_info
+    path merge_script
     
     output:
-    path("count_matrix.txt"), emit: count_matrix
-    path("design_matrix.txt"), emit: design_matrix
+    path "count_matrix.txt", emit: count_matrix
+    path "design_matrix.txt", emit: design_matrix
     
     script:
     """
-    Rscript ${projectDir}/bin/prepare_deseq2.R \
-        --count_files "${count_files.join(' ')}" \
-        --sample_info "${sample_info}" \
-        --count_matrix count_matrix.txt \
-        --design_matrix design_matrix.txt
+    #!/bin/bash
+    set -e
+    
+    # Make the R script executable
+    chmod +x ${merge_script}
+    
+    # Run the merge script
+    ${merge_script} "${sample_info}" "${count_dir}"
     """
 }
 
 // Run DESeq2 analysis
 process deseq2_analysis {
-    publishDir "${params.output_dir}/deseq2", mode: 'copy'
     container "${params.container}"
+    publishDir "${params.output_dir}", mode: 'copy'
     
     input:
     path count_matrix
     path design_matrix
+    path run_script
     
     output:
-    path("results/"), emit: results
-    path("plots/"), emit: plots
+    path "results/*.tsv", emit: results
+    path "plots/*.pdf", emit: plots
     
     script:
     """
-    mkdir -p results plots
+    #!/bin/bash
+    set -e
     
-    Rscript ${projectDir}/bin/run_deseq2.R \
-        --count_matrix ${count_matrix} \
-        --design_matrix ${design_matrix} \
-        --output_dir results \
-        --plot_dir plots
+    # Make the R script executable
+    chmod +x ${run_script}
+    
+    # Run DESeq2 analysis
+    ${run_script} "${count_matrix}" "${design_matrix}"
     """
 } 
