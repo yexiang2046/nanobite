@@ -40,11 +40,23 @@ res <- results(dds)
 # Save results
 write.table(res, "results/differential_expression.tsv", sep="\t", quote=FALSE)
 
-# Create plots
+# Create MA plot
 pdf("plots/MA_plot.pdf")
 plotMA(res)
 dev.off()
 
+# Create PCA plot
 pdf("plots/PCA_plot.pdf")
-plotPCA(vst(dds))
+# Use variance stabilizing transformation
+vsd <- varianceStabilizingTransformation(dds)
+# Calculate PCA
+pcaData <- plotPCA(vsd, intgroup="condition", returnData=TRUE)
+percentVar <- round(100 * attr(pcaData, "percentVar"))
+# Create PCA plot
+ggplot(pcaData, aes(PC1, PC2, color=condition)) +
+    geom_point(size=3) +
+    xlab(paste0("PC1: ", percentVar[1], "% variance")) +
+    ylab(paste0("PC2: ", percentVar[2], "% variance")) +
+    ggtitle("PCA Plot") +
+    theme_bw()
 dev.off() 
