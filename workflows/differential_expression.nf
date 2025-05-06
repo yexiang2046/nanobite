@@ -49,14 +49,12 @@ workflow DIFF_EXPRESSION {
         prepare_deseq2(
             file(count_dir),
             file(sample_info),
-            file('bin/merge_counts.R')
         )
 
         // Run DESeq2 analysis
         deseq2_analysis(
             prepare_deseq2.out.count_matrix,
             prepare_deseq2.out.design_matrix,
-            file('bin/run_deseq2.R')
         )
 
     emit:
