@@ -35,10 +35,10 @@ dds <- DESeqDataSetFromMatrix(
 dds <- DESeq(dds)
 
 # Get results
-res <- results(dds)
+res <- results(dds, independentFiltering=FALSE)
 
 # Save results
-write.csv(res, "results/differential_expression.csv", quote=FALSE)
+write.table(res, "results/differential_expression.tsv", sep="\t", quote=FALSE)
 
 # Create MA plot
 pdf("plots/MA_plot.pdf")
