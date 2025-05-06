@@ -6,6 +6,7 @@ process prepare_deseq2 {
     input:
     path count_dir
     path sample_info
+    path merge_script
     
     output:
     path "count_matrix.txt", emit: count_matrix
@@ -13,8 +14,11 @@ process prepare_deseq2 {
     
     script:
     """
+    #!/bin/bash
+    set -e
+    
     # Run the merge script
-    merge_counts.R "${sample_info}" "${count_dir}"
+    Rscript ${merge_script} "${sample_info}" "${count_dir}"
     """
 }
 
@@ -26,6 +30,7 @@ process deseq2_analysis {
     input:
     path count_matrix
     path design_matrix
+    path run_script
     
     output:
     path "results/*.tsv", emit: results
@@ -33,7 +38,10 @@ process deseq2_analysis {
     
     script:
     """
+    #!/bin/bash
+    set -e
+    
     # Run DESeq2 analysis
-    run_deseq2.R "${count_matrix}" "${design_matrix}"
+    Rscript ${run_script} "${count_matrix}" "${design_matrix}"
     """
 } 
