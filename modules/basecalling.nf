@@ -1,6 +1,7 @@
 process mod_basecalling_rna {
     container 'staphb/dorado:0.9.0-cuda12.2.0'
     containerOptions '--gpus all'
+    publishDir 'results/basecalling_rna', mode: 'copy'
     input:
     val sampleId
     path pod5_folder
@@ -21,6 +22,7 @@ process mod_basecalling_rna {
 process basecalling_rna {
     container 'staphb/dorado:0.9.0-cuda12.2.0'
     containerOptions '--gpus all'
+    publishDir 'results/basecalling_rna', mode: 'copy'
     input:
     tuple val(sampleId), path(pod5_folder)
 
@@ -40,6 +42,7 @@ process basecalling_rna {
 process basecalling_dna {
     container 'staphb/dorado:0.9.0-cuda12.2.0'
     containerOptions '--gpus all'
+    publishDir 'results/basecalling_dna', mode: 'copy'
     input:
     val sampleId
     path pod5_folder
