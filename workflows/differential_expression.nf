@@ -1,5 +1,13 @@
 nextflow.enable.dsl=2
 
+// Docker configuration
+docker {
+    enabled = true
+    runOptions = '--platform linux/amd64'  // Ensure platform compatibility
+    fixOwnership = true
+    temp = 'auto'
+}
+
 // Import modules
 include { prepare_deseq2 } from '../modules/deseq2.nf'
 include { deseq2_analysis } from '../modules/deseq2.nf'
