@@ -15,7 +15,7 @@ usage() {
 if ! command -v samtools &> /dev/null; then
     echo "Error: samtools is not installed. Please install samtools first."
     exit 1
-}
+fi
 
 # Check arguments
 if [ "$#" -ne 2 ]; then
