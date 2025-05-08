@@ -46,23 +46,9 @@ for bam_file in "$input_dir"/*.bam; do
     base_name=$(basename "$bam_file" .bam)
     echo "Processing: $base_name"
 
-    # Check if BAM file is paired-end or single-end
-    if samtools view -h "$bam_file" | head -n 1000 | grep -q "0x1"; then
-        echo "$base_name is paired-end"
-        # Convert paired-end BAM to FASTQ
-        samtools fastq -1 "$output_dir/${base_name}_R1.fastq.gz" \
-                      -2 "$output_dir/${base_name}_R2.fastq.gz" \
-                      -0 /dev/null \
-                      -s "$output_dir/${base_name}_singleton.fastq.gz" \
-                      -n "$bam_file" 2> "$output_dir/${base_name}_conversion.log"
-    else
-        echo "$base_name is single-end"
-        # Convert single-end BAM to FASTQ
-        samtools fastq "$bam_file" \
-                      -n \
-                      -o "$output_dir/${base_name}.fastq.gz" \
-                      2> "$output_dir/${base_name}_conversion.log"
-    fi
+    # Convert BAM to FASTQ and compress with gzip
+    echo "Converting $bam_file to FASTQ.gz..."
+    samtools bam2fq "$bam_file" | gzip > "$output_dir/${base_name}.fastq.gz" 2> "$output_dir/${base_name}_conversion.log"
 
     # Check if conversion was successful
     if [ $? -eq 0 ]; then
