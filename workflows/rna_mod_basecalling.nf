@@ -2,6 +2,10 @@
 
 nextflow.enable.dsl=2
 
+// Import modules
+include { basecalling_rna } from '../modules/basecalling.nf'
+include { align } from '../modules/align.nf'
+
 // Default parameters
 params.help = false
 params.reference = null
