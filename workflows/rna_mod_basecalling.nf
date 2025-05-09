@@ -71,7 +71,7 @@ workflow {
     // Run alignment
     // Run alignment for each sample
     align(
-        basecalling_rna.out
+        mod_basecalling_rna.out
             .map { bam ->
                 tuple(params.mm2opts, bam.getSimpleName(), bam, file(params.reference))
             }
