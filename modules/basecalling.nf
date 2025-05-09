@@ -12,6 +12,7 @@ process mod_basecalling_rna {
     dorado basecaller -r \
     --device "cuda:all" \
     --emit-moves \
+    --estimate-poly-a \
     sup,m5C,m6A_DRACH,pseU \
     ${pod5_folder} > ${sampleId}.bam
     """
