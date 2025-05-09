@@ -23,7 +23,7 @@ def helpMessage() {
 
     Required Arguments:
         --reference         Reference genome FASTA file
-        --sample_info      Tab-delimited sample info file with columns: SampleId, treatment, pod5_path
+        --sample_info      Tab-delimited sample info file with columns: SampleId, pod5_path
     """.stripIndent()
 }
 
@@ -47,7 +47,7 @@ Channel
         println "Processing row: ${row}"
         
         if (!row.containsKey('SampleId') || !row.containsKey('pod5_path')) {
-            error "Sample info file must contain 'SampleId', 'treatment', and 'pod5_path' columns. Found columns: ${row.keySet()}"
+            error "Sample info file must contain 'SampleId' and 'pod5_path' columns. Found columns: ${row.keySet()}"
         }
         
         def sample_id = row.SampleId?.trim()
@@ -60,7 +60,7 @@ Channel
             error "POD5 file not found: ${pod5_path}"
         }
         
-        println "Created tuple: [${sample_id}, ${treatment}, ${pod5_path}]"
+        println "Created tuple: [${sample_id}, ${pod5_path}]"
         return tuple(sample_id, pod5_path)
     }
     .set { samples_ch }
