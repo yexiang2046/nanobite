@@ -12,9 +12,6 @@ params.reference = null
 params.sample_info = null
 params.output_dir = "results"
 params.model = "rna004_130bps_hac@v5.1.0"
-params.modified_bases = "m,a,u"
-params.batch_size = 100
-params.chunks_per_runner = 208
 params.gpu_device = "cuda:0"
 params.use_gpu = true
 
@@ -26,15 +23,7 @@ def helpMessage() {
 
     Required Arguments:
         --reference         Reference genome FASTA file
-        --sample_info      Tab-delimited sample info file with columns: sample_id, pod5_path
-
-    Optional Arguments:
-        --output_dir       Output directory (default: results)
-        --model           Dorado model (default: rna004_130bps_hac@v5.1.0)
-        --modified_bases  Modifications to detect (default: m,a,u)
-        --batch_size     Batch size for processing (default: 100)
-        --gpu_device     GPU device to use (default: cuda:0)
-        --use_gpu        Use GPU for processing (default: true)
+        --sample_info      Tab-delimited sample info file with columns: SampleId, treatment, pod5_path
     """.stripIndent()
 }
 
@@ -54,11 +43,24 @@ Channel
     .fromPath(params.sample_info)
     .splitCsv(header: true, sep: '\t')
     .map { row -> 
-        def sample_id = row.sample_id
-        def pod5_path = file(row.pod5_path)
+        // Print row contents for debugging
+        println "Processing row: ${row}"
+        
+        if (!row.containsKey('SampleId') || !row.containsKey('pod5_path')) {
+            error "Sample info file must contain 'SampleId', 'treatment', and 'pod5_path' columns. Found columns: ${row.keySet()}"
+        }
+        
+        def sample_id = row.SampleId?.trim()
+        def pod5_path = file(row.pod5_path?.trim())
+        
+        if (!sample_id) {
+            error "SampleId cannot be empty"
+        }
         if (!pod5_path.exists()) {
             error "POD5 file not found: ${pod5_path}"
         }
+        
+        println "Created tuple: [${sample_id}, ${treatment}, ${pod5_path}]"
         return tuple(sample_id, pod5_path)
     }
     .set { samples_ch }
