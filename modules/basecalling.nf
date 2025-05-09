@@ -3,9 +3,7 @@ process mod_basecalling_rna {
     containerOptions '--gpus all'
     publishDir 'results/basecalling_rna', mode: 'copy'
     input:
-    val sampleId
-    path pod5_folder
-
+    tuple val(sampleId), path(pod5_folder)
     output:
     path '*.bam'
 
@@ -44,8 +42,7 @@ process basecalling_dna {
     containerOptions '--gpus all'
     publishDir 'results/basecalling_dna', mode: 'copy'
     input:
-    val sampleId
-    path pod5_folder
+    tuple val(sampleId), path(pod5_folder)
 
     output:
     path '*.bam'
