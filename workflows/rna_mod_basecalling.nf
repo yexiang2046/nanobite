@@ -59,44 +59,17 @@ Channel
     }
     .set { samples_ch }
 
-// Process for RNA modification basecalling
-process MOD_BASECALLING {
-    tag "basecalling_${sample_id}"
-    
-    container 'staphb/dorado:0.9.0-cuda12.2.0'
-    
-    publishDir "${params.output_dir}/basecalls", mode: 'copy'
-    
-    input:
-    tuple val(sample_id), path(pod5_file)
-    path reference
-    
-    output:
-    tuple val(sample_id), path("${sample_id}.bam"), emit: bam
-    
-    script:
-    def device_option = params.use_gpu ? "--device ${params.gpu_device}" : "--device cpu"
-    """
-    echo "Starting basecalling for ${sample_id} using model ${params.model}"
-    echo "Device option: ${device_option}"
-    
-    dorado basecaller \
-        ${params.model} \
-        ${pod5_file} \
-        --reference ${reference} \
-        --modified-bases ${params.modified_bases} \
-        --batch-size ${params.batch_size} \
-        --chunks-per-runner ${params.chunks_per_runner} \
-        ${device_option} \
-        > ${sample_id}.bam
-    """
-}
 
 // Main workflow
 workflow {
-    // Reference genome channel
-    reference_ch = Channel.fromPath(params.reference)
-    
     // Run basecalling
-    MOD_BASECALLING(samples_ch, reference_ch)
+    mod_basecalling_rna(samples_ch)
+    // Run alignment
+    // Run alignment for each sample
+    align(
+        basecalling_rna.out
+            .map { bam ->
+                tuple(params.mm2opts, bam.getSimpleName(), bam, file(params.reference))
+            }
+    )
 } 
