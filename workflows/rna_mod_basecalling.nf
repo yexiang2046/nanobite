@@ -7,11 +7,12 @@ params.help = false
 params.reference = null
 params.sample_info = null
 params.output_dir = "results"
-params.model = "dna_r10.4.1_e8.2_400bps_sup@v4.2.0"
+params.model = "rna004_130bps_hac@v5.1.0"
 params.modified_bases = "m,a,u"
 params.batch_size = 100
 params.chunks_per_runner = 208
-params.gpu_device = "cuda:all"
+params.gpu_device = "cuda:0"
+params.use_gpu = true
 
 // Print help message
 def helpMessage() {
@@ -25,10 +26,11 @@ def helpMessage() {
 
     Optional Arguments:
         --output_dir       Output directory (default: results)
-        --model           Dorado model (default: dna_r10.4.1_e8.2_400bps_sup@v4.2.0)
+        --model           Dorado model (default: rna004_130bps_hac@v5.1.0)
         --modified_bases  Modifications to detect (default: m,a,u)
         --batch_size     Batch size for processing (default: 100)
-        --gpu_device     GPU device to use (default: cuda:all)
+        --gpu_device     GPU device to use (default: cuda:0)
+        --use_gpu        Use GPU for processing (default: true)
     """.stripIndent()
 }
 
@@ -70,10 +72,14 @@ process MOD_BASECALLING {
     path reference
     
     output:
-    tuple val(sample_id), path("${sample_id}.bam")
+    tuple val(sample_id), path("${sample_id}.bam"), emit: bam
     
     script:
+    def device_option = params.use_gpu ? "--device ${params.gpu_device}" : "--device cpu"
     """
+    echo "Starting basecalling for ${sample_id} using model ${params.model}"
+    echo "Device option: ${device_option}"
+    
     dorado basecaller \
         ${params.model} \
         ${pod5_file} \
@@ -81,7 +87,7 @@ process MOD_BASECALLING {
         --modified-bases ${params.modified_bases} \
         --batch-size ${params.batch_size} \
         --chunks-per-runner ${params.chunks_per_runner} \
-        --device ${params.gpu_device} \
+        ${device_option} \
         > ${sample_id}.bam
     """
 }
