@@ -12,7 +12,8 @@ include {
     nanopack_phasing;
     nanopack_overview 
 } from '../modules/nanopack_qc.nf'
-include { prepare_deseq2, deseq2_analysis } from '../modules/deseq2.nf'
+include { prepare_deseq2 } from '../modules/deseq2.nf'
+include { deseq2_analysis } from '../modules/deseq2.nf'
 
 // Create a channel from sample info file
 def create_sample_channel(sample_info) {
