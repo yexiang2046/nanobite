@@ -101,6 +101,7 @@ workflow DRS_PIPELINE {
         )
 
     emit:
+        basecalled_bam = basecalling_rna.out
         bam = process_sam.out[0]      // The sorted BAM file
         bai = process_sam.out[1]      // The BAM index file
         counts = nanocount.out        // Transcript counts
