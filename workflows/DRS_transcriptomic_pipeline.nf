@@ -5,51 +5,18 @@ include { basecalling_rna } from '../modules/basecalling.nf'
 include { align } from '../modules/align.nf'
 include { process_sam } from '../modules/align.nf'
 include { nanocount } from '../modules/nanocount.nf'
-include { 
+include {
     nanopack_plot;
     nanopack_compare;
     nanopack_stats;
     nanopack_phasing;
-    nanopack_overview 
+    nanopack_overview
 } from '../modules/nanopack_qc.nf'
 include { prepare_deseq2 } from '../modules/deseq2.nf'
 include { deseq2_analysis } from '../modules/deseq2.nf'
 
-// Create a channel from sample info file
-def create_sample_channel(sample_info) {
-    Channel
-        .fromPath(sample_info)
-        .splitCsv(header: true, sep: '\t')
-        .map { row -> 
-            // Validate required columns
-            if (!row.containsKey('SampleId') || !row.containsKey('treatment') || !row.containsKey('pod5_path')) {
-                error "Sample info file must contain columns: SampleId, treatment, and pod5_path"
-            }
-            
-            def sample_id = row.SampleId?.trim()
-            def treatment = row.treatment?.trim()
-            def pod5_path = row.pod5_path?.trim()
-            
-            // Validate values
-            if (!sample_id) {
-                error "SampleId cannot be empty in sample info file"
-            }
-            if (!treatment) {
-                error "Treatment cannot be empty for sample ${sample_id}"
-            }
-            if (!pod5_path) {
-                error "Pod5 path cannot be empty for sample ${sample_id}"
-            }
-            
-            def pod5_dir = file(pod5_path)
-            
-            if (!pod5_dir.exists()) {
-                error "Pod5 directory not found for sample ${sample_id}: ${pod5_dir}"
-            }
-            
-            return tuple(sample_id, treatment, pod5_dir)
-        }
-}
+// Import common utilities
+include { create_sample_channel; extract_sample_id; create_bam_channel } from '../modules/common.nf'
 
 // Workflow definition
 workflow DRS_PIPELINE {
@@ -79,23 +46,17 @@ workflow DRS_PIPELINE {
         // Process BAM files (sort and index)
         process_sam(align.out)
 
-        // Format BAM files for nanopack QC
-        bam_ch = process_sam.out[0].map { bam ->
-            def sample_id = bam.getSimpleName()
-            def bam_file = bam
-            tuple(sample_id, bam_file)
-        }
+        // Format BAM files for nanopack QC using utility function
+        bam_bai_ch = create_bam_bai_channel(process_sam.out)
 
         // Run nanopack QC on aligned BAM files
-        nanopack_plot(bam_ch)
-        nanopack_stats(bam_ch)
-        
-        
+        nanopack_plot(bam_bai_ch)
+        nanopack_stats(bam_bai_ch)
 
         // Run nanocount for transcript quantification
         nanocount(
             process_sam.out[0].map { bam ->
-                def sample_id = bam.getSimpleName().replace('_aligned.srt', '')
+                def sample_id = extract_sample_id(bam)
                 tuple(bam, sample_id)
             }
         )
