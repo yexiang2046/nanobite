@@ -1,14 +1,16 @@
 // BAM file QC using NanoPlot
 process nanopack_plot {
     publishDir "${params.output_dir}/nanopack/plots", mode: 'copy'
-    container "staphb/nanoplot:1.42.0"
-    
+    container "quay.io/biocontainers/nanoplot:1.45.0--pyhdfd78af_0"
+    time '30m'
+    errorStrategy 'ignore'
+
     input:
-    tuple val(sample_id), path(bam)
-    
+    tuple val(sample_id), path(bam), path(bai)
+
     output:
     path("${sample_id}_nanoplot"), emit: plots
-    
+
     script:
     """
     NanoPlot \
@@ -22,7 +24,7 @@ process nanopack_plot {
 // Compare multiple BAM files using NanoComp
 process nanopack_compare {
     publishDir "${params.output_dir}/nanopack/comparison", mode: 'copy'
-    container "bikc/nanocomp:1.15.1"
+    container "quay.io/biocontainers/nanocomp:1.24.0--pyhdfd78af_0"
     
     input:
     path bams
@@ -47,14 +49,16 @@ process nanopack_compare {
 // Generate BAM statistics using Cramino
 process nanopack_stats {
     publishDir "${params.output_dir}/nanopack/stats", mode: 'copy'
-    container "alexanrna/cramino:0.14.5"
-    
+    container "quay.io/biocontainers/cramino:0.14.6--h031d066_0"
+    time '15m'
+    errorStrategy 'ignore'
+
     input:
-    tuple val(sample_id), path(bam)
-    
+    tuple val(sample_id), path(bam), path(bai)
+
     output:
     path("${sample_id}_stats.txt"), emit: stats
-    
+
     script:
     """
     cramino ${bam} > ${sample_id}_stats.txt
@@ -64,14 +68,14 @@ process nanopack_stats {
 // Generate read phasing visualization using Phasius
 process nanopack_phasing {
     publishDir "${params.output_dir}/nanopack/phasing", mode: 'copy'
-    container "xiang2019/phasius:v1.0.0"
-    
+    container "quay.io/biocontainers/phasius:0.4.0--h031d066_0"
+
     input:
-    tuple val(sample_id), path(bam)
-    
+    tuple val(sample_id), path(bam), path(bai)
+
     output:
     path("${sample_id}_phasing.html"), emit: phasing
-    
+
     script:
     """
     phasius \
@@ -84,16 +88,16 @@ process nanopack_phasing {
 // Generate BAM overview using Kyber
 process nanopack_overview {
     publishDir "${params.output_dir}/nanopack/overview", mode: 'copy'
-    container "alexanrna/kyber:0.1.0"
-    
+    container "quay.io/biocontainers/kyber:2.4.0--h031d066_0"
+
     input:
-    tuple val(sample_id), path(bam)
-    
+    tuple val(sample_id), path(bam), path(bai)
+
     output:
     path("${sample_id}_overview"), emit: overview
-    
+
     script:
     """
-    kyber -o ${sample_id}_overview ${bam} 
+    kyber -o ${sample_id}_overview ${bam}
     """
 } 
