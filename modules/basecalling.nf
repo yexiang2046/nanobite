@@ -1,7 +1,7 @@
 // Basecalling processes for Nanopore sequencing data using Dorado
 
 process mod_basecalling_rna {
-    container 'staphb/dorado:0.9.0-cuda12.2.0'
+    container 'ontresearch/dorado:shae423e761540b9d08b526a1eb32faf498f32e8f22'
     containerOptions '--gpus all'
     publishDir 'results/basecalling_rna', mode: 'copy'
 
@@ -17,13 +17,14 @@ process mod_basecalling_rna {
         --device "cuda:all" \
         --emit-moves \
         --estimate-poly-a \
+        --min-qscore ${params.min_qscore} \
         sup,m5C,m6A_DRACH,pseU \
-        ${pod5_folder} > ${sample_id}.bam
+        ${pod5_folder} > ${sample_id}_q${params.min_qscore}.bam
     """
 }
 
 process basecalling_rna {
-    container 'staphb/dorado:0.9.0-cuda12.2.0'
+    container 'ontresearch/dorado:shae423e761540b9d08b526a1eb32faf498f32e8f22'
     containerOptions '--gpus all'
     publishDir 'results/basecalling_rna', mode: 'copy'
 
@@ -38,13 +39,14 @@ process basecalling_rna {
     dorado basecaller -r \
         --device "cuda:all" \
         --emit-moves \
+        --min-qscore ${params.min_qscore} \
         hac \
-        ${pod5_folder} > ${sample_id}.bam
+        ${pod5_folder} > ${sample_id}_q${params.min_qscore}.bam
     """
 }
 
 process basecalling_dna {
-    container 'staphb/dorado:0.9.0-cuda12.2.0'
+    container 'ontresearch/dorado:shae423e761540b9d08b526a1eb32faf498f32e8f22'
     containerOptions '--gpus all'
     publishDir 'results/basecalling_dna', mode: 'copy'
 
@@ -59,13 +61,14 @@ process basecalling_dna {
     dorado basecaller -r \
         --device "cuda:all" \
         --emit-moves \
+        --min-qscore ${params.min_qscore} \
         hac \
-        ${pod5_folder} > ${sample_id}.bam
+        ${pod5_folder} > ${sample_id}_q${params.min_qscore}.bam
     """
 }
 
 process basecalling_small_rna {
-    container 'staphb/dorado:0.9.0-cuda12.2.0'
+    container 'ontresearch/dorado:shae423e761540b9d08b526a1eb32faf498f32e8f22'
     containerOptions '--gpus all'
     publishDir 'results/basecalling_small_rna', mode: 'copy'
 
@@ -80,13 +83,14 @@ process basecalling_small_rna {
     dorado basecaller -r \
         --device "cuda:all" \
         --emit-moves \
+        --min-qscore ${params.min_qscore} \
         hac \
-        ${pod5_folder} > ${sample_id}.bam
+        ${pod5_folder} > ${sample_id}_q${params.min_qscore}.bam
     """
 }
 
 process basecalling_small_rna_fastq {
-    container 'staphb/dorado:0.9.0-cuda12.2.0'
+    container 'ontresearch/dorado:shae423e761540b9d08b526a1eb32faf498f32e8f22'
     containerOptions '--gpus all'
     publishDir 'results/basecalling_small_rna_fastq', mode: 'copy'
 
@@ -101,13 +105,14 @@ process basecalling_small_rna_fastq {
     dorado basecaller -r \
         --device "cuda:all" \
         --emit-moves \
+        --min-qscore ${params.min_qscore} \
         hac \
-        ${pod5_folder} | samtools fastq -T "*" - | gzip > ${sample_id}.fastq.gz
+        ${pod5_folder} | samtools fastq -T "*" - | gzip > ${sample_id}_q${params.min_qscore}.fastq.gz
     """
 }
 
 process basecalling_pseU {
-    container 'staphb/dorado:0.9.0-cuda12.2.0'
+    container 'ontresearch/dorado:shae423e761540b9d08b526a1eb32faf498f32e8f22'
     containerOptions '--gpus all'
     publishDir 'results/basecalling_pseU', mode: 'copy'
 
@@ -115,15 +120,19 @@ process basecalling_pseU {
     tuple val(sample_id), path(pod5_folder)
 
     output:
-    path '*.bam'
+    path "${sample_id}_q${params.min_qscore}.bam"
 
     script:
+    def model = params.model ?: "rna004_130bps_sup@v5.1.0"
     """
+    dorado download --model ${model}
     dorado basecaller -r \
         --device "cuda:all" \
         --emit-moves \
         --estimate-poly-a \
-        sup,pseU \
-        ${pod5_folder} > ${sample_id}.bam
+        --modified-bases pseU \
+        --min-qscore ${params.min_qscore} \
+        ${model} \
+        ${pod5_folder} > ${sample_id}_q${params.min_qscore}.bam
     """
 }

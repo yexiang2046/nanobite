@@ -4,12 +4,9 @@ nextflow.enable.dsl=2
 
 // Import modules
 include { basecalling_pseU } from '../modules/basecalling.nf'
-include { bam_to_fastq; nanofilt; bwa_index; bwa_align; minimap2_align_sr; sam_to_bam; process_sam } from '../modules/align.nf'
+include { dorado_align } from '../modules/align.nf'
+include { samtools_sort } from '../modules/align.nf'
 include { modkit_pileup; modkit_extract; modkit_summary; filter_pseU } from '../modules/modkit.nf'
-
-// set minimap2 for short reads following NERD-seq when align to transcriptome
-// modify to "-ax splice -uf -k14" if align to genome
-mm2opts = "-ax sr"
 
 // Default parameters
 params.help = false
@@ -19,8 +16,7 @@ params.output_dir = "results"
 params.min_coverage = 5
 params.prob_threshold = 0.8
 params.min_qscore = 10
-params.mm2opts_sr = "-ax sr"
-params.use_minimap2 = true
+params.mm2opts = '--mm2-opts \'ax sr\''
 params.skip_basecalling = false
 params.bam_dir = null
 
@@ -32,7 +28,8 @@ def helpMessage() {
     ========================================
 
     This pipeline performs basecalling with pseudouridine modification detection,
-    alignment, and comprehensive modification analysis using modkit.
+    alignment with Q score filtering using dorado, and comprehensive modification
+    analysis using modkit.
 
     Usage:
     nextflow run workflows/pseU_analysis.nf --reference reference.fa --sample_info sample_info.txt
@@ -48,15 +45,13 @@ def helpMessage() {
         --bam_dir           Directory containing basecalled BAM files (required when --skip_basecalling)
         --min_coverage      Minimum coverage for modification calling (default: 5)
         --prob_threshold    Probability threshold for modification calls (default: 0.8)
-        --min_qscore        Minimum Q score for read filtering (default: 10)
-        --use_minimap2      Use minimap2 for alignment (default: true). If false, use BWA
-        --mm2opts_sr        Minimap2 short read alignment options (default: "-ax sr")
+        --min_qscore        Minimum Q score for read filtering during alignment (default: 10)
+        --mm2opts_sr        Minimap2 short read alignment options (default: "--mm2-opts '-ax sr'")
 
     Output Structure:
         results/
         ├── basecalling_pseU/     # Basecalled BAM files with ψ modifications
-        ├── filtered/             # Quality filtered FASTQ files (Q > 10)
-        ├── alignment/            # Minimap2 aligned BAM files
+        ├── alignment/            # Dorado aligned BAM files (Q score filtered)
         ├── bam/                  # Sorted BAM files and indices
         ├── modkit_pileup/        # Per-site modification frequencies
         ├── modkit_extract/       # Read-level modification calls
@@ -139,70 +134,40 @@ workflow {
         // Start from existing BAM files
         bam_input_ch = create_bam_channel()
 
-        // Step 1: Convert BAM to FASTQ
-        fastq_ch = bam_to_fastq(bam_input_ch)
+        // Step 1: Align BAM to reference with Q score filtering using dorado
+        dorado_align(
+            bam_input_ch
+                .map { sampleId, bam ->
+                    tuple(params.mm2opts, sampleId, bam, reference_file)
+                }
+        )
 
-        // Step 2: Quality filtering with NanoFilt (Q score > 10)
-        filtered_ch = nanofilt(fastq_ch)
-
-        // Step 3: Alignment to reference genome (BWA or minimap2)
-        if (params.use_minimap2) {
-            // Use minimap2 for alignment (outputs SAM)
-            minimap2_align_sr(
-                filtered_ch
-                    .map { sampleId, fastq ->
-                        tuple(sampleId, fastq, reference_file)
-                    }
-            )
-
-            // Convert SAM to BAM
-            sam_to_bam(minimap2_align_sr.out)
-            aligned_ch = sam_to_bam.out
-        } else {
-            // Use BWA for alignment (default)
-            // Build BWA index for reference genome
-            bwa_index(reference_file)
-
-            // Run BWA alignment for each sample
-            bwa_align(
-                filtered_ch
-                    .combine(bwa_index.out)
-                    .map { sampleId, fastq, reference, index_files ->
-                        tuple(sampleId, fastq, reference, index_files)
-                    }
-            )
-
-            // Convert SAM to BAM
-            sam_to_bam(bwa_align.out)
-            aligned_ch = sam_to_bam.out
-        }
-
-        // Step 4: Sort BAM and create index
-        process_sam(aligned_ch)
+        // Step 2: Sort BAM and create index
+        samtools_sort(dorado_align.out)
 
         // Create channel with sample ID, BAM, and BAI files
-        bam_bai_ch = process_sam.out
+        bam_bai_ch = samtools_sort.out
             .map { bam, bai ->
                 tuple(bam.getSimpleName().replaceAll(/\.srt$/, ''), bam, bai, reference_file)
             }
 
-        // Step 5: Run modkit pileup to get per-site modification frequencies
+        // Step 3: Run modkit pileup to get per-site modification frequencies
         modkit_pileup(bam_bai_ch)
 
-        // Step 6: Filter for pseudouridine sites
+        // Step 4: Filter for pseudouridine sites
         filter_pseU(modkit_pileup.out)
 
-        // Step 7: Extract read-level modification calls
+        // Step 5: Extract read-level modification calls
         modkit_extract(
-            process_sam.out
+            samtools_sort.out
                 .map { bam, bai ->
                     tuple(bam.getSimpleName().replaceAll(/\.srt$/, ''), bam)
                 }
         )
 
-        // Step 8: Generate modification summary statistics
+        // Step 6: Generate modification summary statistics
         modkit_summary(
-            process_sam.out
+            samtools_sort.out
                 .map { bam, bai ->
                     tuple(bam.getSimpleName().replaceAll(/\.srt$/, ''), bam)
                 }
@@ -215,75 +180,40 @@ workflow {
         // Step 1: Basecalling with pseudouridine modification detection
         basecalling_pseU(samples_ch)
 
-        // Step 2: Convert BAM to FASTQ
-        fastq_ch = bam_to_fastq(
+        // Step 2: Align BAM to reference with Q score filtering using dorado
+        dorado_align(
             basecalling_pseU.out
                 .map { bam ->
-                    tuple(bam.getSimpleName(), bam)
+                    tuple(params.mm2opts, bam.getSimpleName(), bam, reference_file)
                 }
         )
 
-        // Step 3: Quality filtering with NanoFilt (Q score > 10)
-        filtered_ch = nanofilt(fastq_ch)
-
-        // Step 4: Alignment to reference genome (BWA or minimap2)
-        if (params.use_minimap2) {
-            // Use minimap2 for alignment (outputs SAM)
-            minimap2_align_sr(
-                filtered_ch
-                    .map { sampleId, fastq ->
-                        tuple(sampleId, fastq, reference_file)
-                    }
-            )
-
-            // Convert SAM to BAM
-            sam_to_bam(minimap2_align_sr.out)
-            aligned_ch = sam_to_bam.out
-        } else {
-            // Use BWA for alignment (default)
-            // Build BWA index for reference genome
-            bwa_index(reference_file)
-
-            // Run BWA alignment for each sample
-            bwa_align(
-                filtered_ch
-                    .combine(bwa_index.out)
-                    .map { sampleId, fastq, reference, index_files ->
-                        tuple(sampleId, fastq, reference, index_files)
-                    }
-            )
-
-            // Convert SAM to BAM
-            sam_to_bam(bwa_align.out)
-            aligned_ch = sam_to_bam.out
-        }
-
-        // Step 5: Sort BAM and create index
-        process_sam(aligned_ch)
+        // Step 3: Sort BAM and create index
+        samtools_sort(dorado_align.out)
 
         // Create channel with sample ID, BAM, and BAI files
-        bam_bai_ch = process_sam.out
+        bam_bai_ch = samtools_sort.out
             .map { bam, bai ->
                 tuple(bam.getSimpleName().replaceAll(/\.srt$/, ''), bam, bai, reference_file)
             }
 
-        // Step 6: Run modkit pileup to get per-site modification frequencies
+        // Step 4: Run modkit pileup to get per-site modification frequencies
         modkit_pileup(bam_bai_ch)
 
-        // Step 7: Filter for pseudouridine sites
+        // Step 5: Filter for pseudouridine sites
         filter_pseU(modkit_pileup.out)
 
-        // Step 8: Extract read-level modification calls
+        // Step 6: Extract read-level modification calls
         modkit_extract(
-            process_sam.out
+            samtools_sort.out
                 .map { bam, bai ->
                     tuple(bam.getSimpleName().replaceAll(/\.srt$/, ''), bam)
                 }
         )
 
-        // Step 9: Generate modification summary statistics
+        // Step 7: Generate modification summary statistics
         modkit_summary(
-            process_sam.out
+            samtools_sort.out
                 .map { bam, bai ->
                     tuple(bam.getSimpleName().replaceAll(/\.srt$/, ''), bam)
                 }
@@ -294,8 +224,7 @@ workflow {
 workflow.onComplete {
     def resultsMessage = params.skip_basecalling ?
         """
-    - Filtered FASTQs: ${params.output_dir}/filtered/
-    - Aligned BAMs: ${params.output_dir}/alignment/
+    - Aligned BAMs (Q>${params.min_qscore}): ${params.output_dir}/alignment/
     - Sorted BAMs: ${params.output_dir}/bam/
     - Modification pileup: ${params.output_dir}/modkit_pileup/
     - Pseudouridine sites: ${params.output_dir}/pseU_sites/
@@ -304,8 +233,7 @@ workflow.onComplete {
         """ :
         """
     - Basecalled BAMs: ${params.output_dir}/basecalling_pseU/
-    - Filtered FASTQs: ${params.output_dir}/filtered/
-    - Aligned BAMs: ${params.output_dir}/alignment/
+    - Aligned BAMs (Q>${params.min_qscore}): ${params.output_dir}/alignment/
     - Sorted BAMs: ${params.output_dir}/bam/
     - Modification pileup: ${params.output_dir}/modkit_pileup/
     - Pseudouridine sites: ${params.output_dir}/pseU_sites/
@@ -321,6 +249,8 @@ workflow.onComplete {
     Duration: ${workflow.duration}
     Output directory: ${params.output_dir}
     Mode: ${params.skip_basecalling ? 'Skipped basecalling (started from BAM files)' : 'Full pipeline (basecalling included)'}
+    Q score filtering: ${params.min_qscore}
+    Alignment: Dorado aligner with ${params.mm2opts_sr} options
 
     Results:${resultsMessage}
     """.stripIndent()

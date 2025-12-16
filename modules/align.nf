@@ -1,7 +1,7 @@
 // Alignment processes for Nanopore sequencing data
 
-process align {
-    container 'staphb/dorado:0.9.0-cuda12.2.0'
+process dorado_align {
+    container 'ontresearch/dorado:shae423e761540b9d08b526a1eb32faf498f32e8f22'
     containerOptions '--gpus all'
     cpus 4
     publishDir "${params.output_dir}/alignment", mode: 'copy'
@@ -18,7 +18,7 @@ process align {
     """
 }
 
-process process_sam {
+process samtools_sort {
     container 'staphb/samtools:1.21'
     cpus 4
     publishDir "${params.output_dir}/bam", mode: 'copy'
@@ -36,7 +36,7 @@ process process_sam {
     """
 }
 
-process bam_to_fastq {
+process samtools_fastq {
     container 'staphb/samtools:1.21'
     cpus 2
 
@@ -52,7 +52,7 @@ process bam_to_fastq {
     """
 }
 
-process nanofilt {
+process nanofilt_filter {
     container 'quay.io/biocontainers/nanofilt:2.8.0--py_0'
     cpus 2
     publishDir "${params.output_dir}/filtered", mode: 'copy'

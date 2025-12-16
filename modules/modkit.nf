@@ -1,5 +1,5 @@
 process modkit_pileup {
-    container 'xiang2019/modkit:v1.0.0'
+    container 'quay.io/biocontainers/ont-modkit:0.5.0--hcdda2d0_2'
     cpus 8
     publishDir "${params.output_dir}/modkit_pileup", mode: 'copy'
 
@@ -15,16 +15,14 @@ process modkit_pileup {
     """
     modkit pileup ${bam_file} ${sampleId}_pileup.bed \
         --ref ${reference} \
-        --cpus ${task.cpus} \
+        -t ${task.cpus} \
         --log-filepath ${sampleId}_modkit.log \
-        --filter-threshold ${prob_threshold} \
-        --interval-size 1000 \
-        --min-coverage ${min_coverage}
+        --filter-threshold ${prob_threshold} 
     """
 }
 
 process modkit_extract {
-    container 'xiang2019/modkit:v1.0.0'
+    container 'quay.io/biocontainers/ont-modkit:0.5.0--hcdda2d0_2'
     cpus 4
     publishDir "${params.output_dir}/modkit_extract", mode: 'copy'
 
@@ -36,14 +34,14 @@ process modkit_extract {
 
     script:
     """
-    modkit extract ${bam_file} ${sampleId}_mod_calls.tsv \
-        --cpus ${task.cpus} \
+    modkit extract full ${bam_file} ${sampleId}_mod_calls.tsv \
+        -t ${task.cpus} \
         --log-filepath ${sampleId}_extract.log
     """
 }
 
 process modkit_summary {
-    container 'xiang2019/modkit:v1.0.0'
+    container 'quay.io/biocontainers/ont-modkit:0.5.0--hcdda2d0_2'
     cpus 2
     publishDir "${params.output_dir}/modkit_summary", mode: 'copy'
 
@@ -60,7 +58,7 @@ process modkit_summary {
 }
 
 process filter_pseU {
-    container 'xiang2019/modkit:v1.0.0'
+    container 'quay.io/biocontainers/ont-modkit:0.5.0--hcdda2d0_2'
     publishDir "${params.output_dir}/pseU_sites", mode: 'copy'
 
     input:
