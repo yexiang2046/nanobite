@@ -33,8 +33,9 @@ process modkit_extract {
     tuple val(sampleId), path("${sampleId}_mod_calls.tsv")
 
     script:
+    def mapped_only = params.mapped_only ? '--mapped-only' : ''
     """
-    modkit extract full ${bam_file} ${sampleId}_mod_calls.tsv \
+    modkit extract full ${mapped_only} ${bam_file} ${sampleId}_mod_calls.tsv \
         -t ${task.cpus} \
         --log-filepath ${sampleId}_extract.log
     """

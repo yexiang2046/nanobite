@@ -158,13 +158,29 @@ process minimap2_align_sr {
     """
 }
 
+process bam_to_fastq_mod {
+    container 'staphb/samtools:1.21'
+    cpus 2
+
+    input:
+    tuple val(sample_id), path(bam_file)
+
+    output:
+    tuple val(sample_id), path("${sample_id}_mod.fastq")
+
+    script:
+    """
+    samtools fastq -T MM,ML ${bam_file} > ${sample_id}_mod.fastq
+    """
+}
+
 process minimap2_align_mod {
     container 'xiang2019/minimap2-samtools:2.28'
     cpus 4
     publishDir "${params.output_dir}/alignment", mode: 'copy'
 
     input:
-    tuple val(sample_id), path(bam_file), path(reference)
+    tuple val(sample_id), path(fastq_file), path(reference)
 
     output:
     path "${sample_id}_aligned.bam"
@@ -172,8 +188,7 @@ process minimap2_align_mod {
     script:
     def mm2opts_nerd = params.mm2opts_nerd ?: "-ax sr"
     """
-    samtools fastq -T MM,ML ${bam_file} | \
-        minimap2 ${mm2opts_nerd} -y -t ${task.cpus} ${reference} - | \
-        samtools view -bS - > ${sample_id}_aligned.bam
+    minimap2 ${mm2opts_nerd} -y -t ${task.cpus} ${reference} ${fastq_file} | \
+    samtools view -bS - > ${sample_id}_aligned.bam
     """
 }
