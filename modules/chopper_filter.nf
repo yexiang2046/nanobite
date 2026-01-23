@@ -11,6 +11,6 @@ process CHOPPER_QC {
 
     script:
     """
-    chopper --trim-approach best-read-segment --cutoff 15 -i ${fastq_file} > ${sample_id}_chopper.fastq
+    cat ${fastq_file} | chopper --trim-approach best-read-segment --cutoff 15 > ${sample_id}_chopper.fastq
     """
 }
