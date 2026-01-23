@@ -157,3 +157,23 @@ process minimap2_align_sr {
     minimap2 ${mm2opts} -t ${task.cpus} ${reference} ${fastq_file} > ${sample_id}_aligned.sam
     """
 }
+
+process minimap2_align_mod {
+    container 'xiang2019/minimap2-samtools:2.28'
+    cpus 4
+    publishDir "${params.output_dir}/alignment", mode: 'copy'
+
+    input:
+    tuple val(sample_id), path(bam_file), path(reference)
+
+    output:
+    path "${sample_id}_aligned.bam"
+
+    script:
+    def mm2opts_nerd = params.mm2opts_nerd ?: "-ax sr"
+    """
+    samtools fastq -T MM,ML ${bam_file} | \
+        minimap2 ${mm2opts_nerd} -y -t ${task.cpus} ${reference} - | \
+        samtools view -bS - > ${sample_id}_aligned.bam
+    """
+}
