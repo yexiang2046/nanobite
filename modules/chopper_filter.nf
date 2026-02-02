@@ -12,6 +12,6 @@ process CHOPPER_QC {
     script:
     def cutoff = params.chopper_cutoff ?: 10
     """
-    chopper --input ${fastq_file} --output ${sample_id}_chopper.fastq --trim-approach best-read-segment --cutoff ${cutoff}
+    chopper --input ${fastq_file} --trim-approach best-read-segment --cutoff ${cutoff} > ${sample_id}_chopper.fastq
     """
 }
