@@ -5,7 +5,7 @@ nextflow.enable.dsl=2
 // Import modules
 include { bam_to_fastq_mod; minimap2_align_mod } from '../modules/align.nf'
 include { samtools_sort } from '../modules/align.nf'
-include { CHOPPER_QC } from '../modules/chopper_filter.nf'
+include { NANOFILT_QC } from '../modules/nanofilt_filter.nf'
 include { modkit_pileup; modkit_extract; modkit_summary } from '../modules/modkit.nf'
 
 // Default parameters
@@ -16,6 +16,7 @@ params.output_dir = "results"
 params.min_coverage = 5
 params.prob_threshold = 0.8
 params.mm2opts_nerd = "-ax sr"
+params.run_nanofilt = false
 
 // Print help message
 def helpMessage() {
@@ -40,9 +41,15 @@ def helpMessage() {
         --mm2opts_nerd      Minimap2 alignment options for NERD-seq (default: "-ax sr")
         --min_coverage      Minimum coverage for modification calling (default: 5)
         --prob_threshold    Probability threshold for modification calls (default: 0.8)
+        --run_nanofilt      Enable NanoFilt filtering step (default: false)
+        --nanofilt_min_qual Minimum quality score for NanoFilt filtering (default: 10)
+        --nanofilt_min_len  Minimum read length for NanoFilt filtering (default: 500)
+        --nanofilt_headcrop Trim N bases from the start of reads (default: 0)
+        --nanofilt_tailcrop Trim N bases from the end of reads (default: 0)
 
     Output Structure:
         results/
+        ├── nanofilt_qc/          # NanoFilt filtered FASTQ files (if --run_nanofilt)
         ├── alignment/            # Aligned BAM files (MM/ML tags preserved)
         ├── bam/                  # Sorted BAM files and indices
         ├── modkit_pileup/        # Per-site modification frequencies
@@ -99,13 +106,21 @@ workflow {
     // Step 1: Convert BAM to FASTQ while preserving MM/ML tags
     bam_to_fastq_mod(bam_input_ch)
 
-    // Step 2: Filter FASTQ with Chopper
-    CHOPPER_QC(bam_to_fastq_mod.out)
+    // Step 2: Optionally filter FASTQ with NanoFilt (preserves modification information)
+    if (params.run_nanofilt) {
+        NANOFILT_QC(bam_to_fastq_mod.out)
+        fastq_for_align = NANOFILT_QC.out.filtered_fastq
+            .map { fastq ->
+                def sample_id = fastq.getSimpleName().replaceAll(/_nanofilt$/, '')
+                tuple(sample_id, fastq)
+            }
+    } else {
+        fastq_for_align = bam_to_fastq_mod.out
+    }
 
     // Step 3: Align FASTQ with minimap2 preserving MM/ML tags
-    fastq_ref_ch = CHOPPER_QC.out.filtered_fastq
-        .map { fastq ->
-            def sample_id = fastq.getSimpleName().replaceAll(/_filtered$/, '')
+    fastq_ref_ch = fastq_for_align
+        .map { sample_id, fastq ->
             tuple(sample_id, fastq, reference_file)
         }
     minimap2_align_mod(fastq_ref_ch)
@@ -140,6 +155,7 @@ workflow {
 }
 
 workflow.onComplete {
+    def nanofilt_result = params.run_nanofilt ? "- Filtered FASTQ: ${params.output_dir}/nanofilt_qc/" : ""
     log.info"""
     ========================================
     Pipeline execution completed!
@@ -149,10 +165,12 @@ workflow.onComplete {
     Output directory: ${params.output_dir}
 
     Alignment: Minimap2 with ${params.mm2opts_nerd} (MM/ML tags preserved)
+    NanoFilt filtering: ${params.run_nanofilt ? 'ENABLED' : 'DISABLED'}
     Modification probability threshold: ${params.prob_threshold}
     Minimum coverage: ${params.min_coverage}
 
     Results:
+    ${nanofilt_result}
     - Aligned BAMs: ${params.output_dir}/alignment/
     - Sorted BAMs: ${params.output_dir}/bam/
     - Modification pileup: ${params.output_dir}/modkit_pileup/
