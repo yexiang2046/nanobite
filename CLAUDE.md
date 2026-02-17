@@ -23,10 +23,13 @@ The pipeline is organized into modular Nextflow workflows and processes:
    - `featurecounts_analysis.nf`: Gene-level quantification using featureCounts
    - `rna_mod_basecalling.nf`: RNA modification basecalling and alignment
    - `small_rna_pipeline.nf`: Small RNA quantification using BWA and NanoCount
+   - `nerdseq_analysis.nf`: NERD-seq style analysis with minimap2 alignment preserving MM/ML tags and modkit processing
+   - `pseU_analysis.nf`: Pseudouridine-specific modification analysis with comprehensive modkit tools
 
 2. **Process Modules** (in `modules/`):
    - `basecalling.nf`: Four basecalling processes (mod_basecalling_rna, basecalling_rna, basecalling_dna, basecalling_small_rna)
-   - `align.nf`: Alignment using Dorado aligner, BWA for small RNA, and BAM processing with samtools
+   - `align.nf`: Alignment using Dorado aligner, minimap2 with MM/ML tag preservation, BWA for small RNA, and BAM processing with samtools
+   - `modkit.nf`: RNA modification analysis tools (pileup, extract, summary, filter_pseU)
    - `nanocount.nf`: Transcript-level quantification
    - `featurecounts.nf`: Gene-level quantification and aggregation
    - `deseq2.nf`: Differential expression analysis
@@ -79,6 +82,24 @@ nextflow run workflows/small_rna_pipeline.nf \
     --output_dir results
 ```
 
+### NERD-seq Style RNA Modification Analysis
+```bash
+nextflow run workflows/nerdseq_analysis.nf \
+    --reference reference.fa \
+    --bam_dir /path/to/basecalled_bams \
+    --mm2opts_nerd "-ax sr" \
+    --prob_threshold 0.8
+```
+
+### Pseudouridine Modification Analysis
+```bash
+nextflow run workflows/pseU_analysis.nf \
+    --reference reference.fa \
+    --sample_info sample_info.txt \
+    --skip_basecalling true \
+    --bam_dir /path/to/bams
+```
+
 ### Configuration Profiles
 - GPU profile: `nextflow run -profile gpu ...` (enables GPU for basecalling)
 - CPU profile: `nextflow run -profile cpu ...` (CPU-only mode)
@@ -91,6 +112,7 @@ nextflow run workflows/small_rna_pipeline.nf \
 - `--output_dir`: Output directory (default: "results")
 - `--mm2opts`: Minimap2 alignment options for RNA-seq
 - `--mm2opts_sr`: Minimap2 options for small RNA (default: "-ax sr")
+- `--mm2opts_nerd`: Minimap2 options for NERD-seq style analysis with MM/ML tag preservation (default: "-ax sr")
 - `--use_minimap2`: Use minimap2 instead of BWA for small RNA alignment (default: false)
 - `--use_gpu`: Enable/disable GPU usage
 - `--base_mods`: Modification types to analyze (default: "m,a,u")
