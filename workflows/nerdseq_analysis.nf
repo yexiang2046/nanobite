@@ -6,7 +6,7 @@ nextflow.enable.dsl=2
 include { bam_to_fastq_mod; minimap2_align_mod } from '../modules/align.nf'
 include { samtools_sort } from '../modules/align.nf'
 include { NANOFILT_QC } from '../modules/nanofilt_filter.nf'
-include { modkit_pileup; modkit_extract; modkit_summary } from '../modules/modkit.nf'
+include { modkit_pileup; modkit_summary } from '../modules/modkit.nf'
 
 // Default parameters
 params.help = false
@@ -53,7 +53,6 @@ def helpMessage() {
         ├── alignment/            # Aligned BAM files (MM/ML tags preserved)
         ├── bam/                  # Sorted BAM files and indices
         ├── modkit_pileup/        # Per-site modification frequencies
-        ├── modkit_extract/       # Read-level modification calls
         └── modkit_summary/       # Summary statistics
 
     Example:
@@ -137,15 +136,7 @@ workflow {
     // Step 5: Run modkit pileup to get per-site modification frequencies
     modkit_pileup(bam_bai_ch)
 
-    // Step 6: Extract read-level modification calls
-    modkit_extract(
-        samtools_sort.out
-            .map { bam, bai ->
-                tuple(bam.getSimpleName().replaceAll(/\.srt$/, ''), bam)
-            }
-    )
-
-    // Step 7: Generate modification summary statistics
+    // Step 6: Generate modification summary statistics
     modkit_summary(
         samtools_sort.out
             .map { bam, bai ->
@@ -174,7 +165,6 @@ workflow.onComplete {
     - Aligned BAMs: ${params.output_dir}/alignment/
     - Sorted BAMs: ${params.output_dir}/bam/
     - Modification pileup: ${params.output_dir}/modkit_pileup/
-    - Modification calls: ${params.output_dir}/modkit_extract/
     - Summary statistics: ${params.output_dir}/modkit_summary/
     """.stripIndent()
 }
