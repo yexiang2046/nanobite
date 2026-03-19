@@ -25,6 +25,7 @@ The pipeline is organized into modular Nextflow workflows and processes:
    - `small_rna_pipeline.nf`: Small RNA quantification using BWA and NanoCount
    - `nerdseq_analysis.nf`: NERD-seq style analysis with minimap2 alignment preserving MM/ML tags and modkit processing
    - `pseU_analysis.nf`: Pseudouridine-specific modification analysis with comprehensive modkit tools
+   - `genome_transcript_quantification.nf`: Transcript quantification from genome-aligned BAMs with corrected DRS parameters and configurable multi-mapper handling
 
 2. **Process Modules** (in `modules/`):
    - `basecalling.nf`: Four basecalling processes (mod_basecalling_rna, basecalling_rna, basecalling_dna, basecalling_small_rna)
@@ -100,12 +101,32 @@ nextflow run workflows/pseU_analysis.nf \
     --bam_dir /path/to/bams
 ```
 
+### Genome Transcript Quantification
+```bash
+nextflow run workflows/genome_transcript_quantification.nf \
+    --bam_dir /path/to/genome_aligned_bams \
+    --gtf_file gencode.v44.annotation.gtf \
+    --sample_info sample_info.txt \
+    --output_dir results/transcript_counts
+```
+
+**With multi-mapper fractional counting (recommended for small RNAs):**
+```bash
+nextflow run workflows/genome_transcript_quantification.nf \
+    --bam_dir /path/to/bams \
+    --gtf_file gencode.v44.annotation.gtf \
+    --sample_info sample_info.txt \
+    --count_multimappers true \
+    --use_fractional_counting true
+```
+
 ### Configuration Profiles
 - GPU profile: `nextflow run -profile gpu ...` (enables GPU for basecalling)
 - CPU profile: `nextflow run -profile cpu ...` (CPU-only mode)
 
 ## Key Parameters (in nextflow.config)
 
+### General Parameters
 - `--cpus`: Number of CPUs (default: 16)
 - `--sample_info`: Path to sample information file
 - `--reference`: Reference genome FASTA
@@ -119,6 +140,16 @@ nextflow run workflows/pseU_analysis.nf \
 - `--min_coverage`: Minimum coverage for modification calling (default: 5)
 - `--prob_threshold`: Probability threshold for modification calls (default: 0.8)
 - `--min_qscore`: Minimum Q score for read filtering (default: 10)
+
+### Transcript Quantification Parameters (genome_transcript_quantification.nf)
+- `--stranded`: Strandedness (0=unstranded, 1=stranded for DRS, 2=reverse, default: 1)
+- `--min_mapq`: Minimum mapping quality (default: 10)
+- `--feature_type`: Feature type to count from GTF (default: "exon")
+- `--gene_attribute`: GTF attribute for grouping (default: "gene_id")
+- `--count_multimappers`: Enable counting of multi-mapping reads (default: false)
+- `--use_fractional_counting`: Use fractional counting for multi-mappers (default: false, requires count_multimappers=true)
+- `--count_overlapping`: Count reads overlapping multiple features (default: false)
+- `--run_deseq2`: Run differential expression analysis (default: false)
 
 ## Container Strategy
 
@@ -179,6 +210,102 @@ results/
      - Uses `-ax sr` preset for short read alignment (configurable via `--mm2opts_sr`)
      - Outputs BAM directly without requiring SAM-to-BAM conversion
      - Generally faster than BWA for Nanopore data
+
+## Genome Transcript Quantification Workflow Details
+
+### Overview
+The `genome_transcript_quantification.nf` workflow quantifies all transcripts from genome-aligned DRS BAM files using featureCounts with **corrected parameters** for single-end Nanopore long-read data.
+
+### Key Improvements Over Original featureCounts Implementation
+The original `featurecounts` process used **incorrect parameters** for DRS data:
+- ❌ `-p`: Paired-end mode (DRS is single-end)
+- ❌ `-B`: Require both ends mapped (not applicable to single-end)
+- ❌ `-C`: Chimeric fragment filtering (for paired-end only)
+- ❌ Missing `-L`: Long-read mode essential for Nanopore
+- ❌ Missing `-s`: Strand specification (DRS is stranded)
+- ❌ Missing `--primary`: To avoid double-counting secondary alignments
+
+The new `featurecounts_genome_aligned` process uses:
+- ✅ `-L`: Long-read mode for Nanopore error handling
+- ✅ `-s 1`: Stranded mode (DRS preserves strand information)
+- ✅ `--primary`: Only count primary alignments
+- ✅ `-Q 10`: Mapping quality threshold
+- ✅ Configurable multi-mapper handling
+
+### Multi-mapper Handling Modes
+
+**Mode 1: Exclude multi-mappers (Default, Conservative)**
+```bash
+--count_multimappers false
+```
+- Multi-mapping reads are NOT counted (reported as "Unassigned_MultiMapping")
+- Best for: Quantifying uniquely-mapped genes
+- Limitation: Underestimates gene families and small RNAs with multiple genomic copies
+
+**Mode 2: Count all multi-mapper alignments (Permissive)**
+```bash
+--count_multimappers true --use_fractional_counting false
+```
+- Each alignment of a multi-mapper is counted separately
+- A read mapping to 5 locations adds 5 to total counts
+- Warning: Inflates counts for repetitive genes
+
+**Mode 3: Fractional counting (Recommended for small RNAs)**
+```bash
+--count_multimappers true --use_fractional_counting true
+```
+- Multi-mapper counts are distributed proportionally
+- A read mapping to 5 locations contributes 0.2 counts to each
+- Best for: Small RNAs (U6 snRNA has ~50 genomic copies, tRNAs have 400-600 copies)
+- Most accurate representation of read abundance across gene families
+
+### Use Cases
+
+**For mRNA/lncRNA quantification (mostly unique genes):**
+```bash
+nextflow run workflows/genome_transcript_quantification.nf \
+    --bam_dir bams/ \
+    --gtf_file gencode.v44.annotation.gtf \
+    --sample_info samples.txt
+```
+
+**For small RNA quantification (miRNA, snoRNA, snRNA, tRNA):**
+```bash
+nextflow run workflows/genome_transcript_quantification.nf \
+    --bam_dir bams/ \
+    --gtf_file gencode.v44.annotation.gtf \
+    --sample_info samples.txt \
+    --count_multimappers true \
+    --use_fractional_counting true
+```
+
+**For gene-level (not exon-level) counting:**
+```bash
+nextflow run workflows/genome_transcript_quantification.nf \
+    --bam_dir bams/ \
+    --gtf_file gencode.v44.annotation.gtf \
+    --sample_info samples.txt \
+    --feature_type gene \
+    --gene_attribute gene_name
+```
+
+### Input Requirements
+- **BAM files**: Genome-aligned DRS reads (sorted with .bai indices)
+- **GTF file**: Annotation file (GENCODE, Ensembl, or custom)
+- **Sample info**: Tab-separated file with `SampleId` and `treatment` columns
+
+### Output Files
+- `{sample}_featurecounts.txt`: Per-sample counts with gene annotations
+- `{sample}_featurecounts.txt.summary`: Assignment statistics
+- `count_matrix.txt`: Merged counts across all samples
+- `count_matrix_clean.txt`: Counts only (ready for DESeq2)
+
+### Quality Control Metrics
+Check `.summary` files for:
+- **Assigned**: Should be >50-70% for good quantification
+- **Unassigned_MultiMapping**: High if multi-mappers excluded (expected for small RNAs)
+- **Unassigned_NoFeatures**: Reads mapping outside annotated features
+- **Unassigned_Ambiguity**: Reads overlapping multiple genes
 
 ## Development Tips
 

@@ -1,24 +1,24 @@
-// FeatureCounts for transcript quantification
+// FeatureCounts for transcript quantification (original - kept for backward compatibility)
 process featurecounts {
     container 'biocontainers/subread:v1.6.3dfsg-1-deb_cv1'
     publishDir "${params.output_dir}/featurecounts", mode: 'copy'
-    
+
     input:
     tuple val(sample_id), path(bam_file)
     path gtf_file
     path reference_fasta
-    
+
     output:
     tuple val(sample_id), path("${sample_id}_featurecounts.txt"), emit: counts
     path("${sample_id}_featurecounts.txt.summary"), emit: summary
-    
+
     script:
     """
     # Install featureCounts if not available
     if ! command -v featureCounts &> /dev/null; then
         R -e "if (!require('Rsubread')) BiocManager::install('Rsubread', update = FALSE)"
     fi
-    
+
     # Run featureCounts
     featureCounts \
         -a ${gtf_file} \
@@ -30,9 +30,46 @@ process featurecounts {
         -C \
         -T ${task.cpus} \
         ${bam_file}
-    
+
     # Create a clean count matrix
     tail -n +3 ${sample_id}_featurecounts.txt | cut -f1,7 > ${sample_id}_counts_clean.txt
+    """
+}
+
+// FeatureCounts optimized for genome-aligned DRS data with configurable multi-mapper handling
+process featurecounts_genome_aligned {
+    container 'biocontainers/subread:v1.6.3dfsg-1-deb_cv1'
+    publishDir "${params.output_dir}/featurecounts", mode: 'copy'
+
+    input:
+    tuple val(sample_id), path(bam_file)
+    path gtf_file
+
+    output:
+    tuple val(sample_id), path("${sample_id}_featurecounts.txt"), emit: counts
+    path("${sample_id}_featurecounts.txt.summary"), emit: summary
+
+    script:
+    // Multi-mapper handling options
+    def multimapper_flag = params.count_multimappers ? "-M" : ""
+    def fraction_flag = params.use_fractional_counting ? "--fraction" : ""
+    def overlap_flag = params.count_overlapping ? "-O" : ""
+
+    """
+    featureCounts \\
+        -L \\
+        -a ${gtf_file} \\
+        -o ${sample_id}_featurecounts.txt \\
+        -g ${params.gene_attribute} \\
+        -t ${params.feature_type} \\
+        -s ${params.stranded} \\
+        ${multimapper_flag} \\
+        ${fraction_flag} \\
+        ${overlap_flag} \\
+        --primary \\
+        -Q ${params.min_mapq} \\
+        -T ${task.cpus} \\
+        ${bam_file}
     """
 }
 
