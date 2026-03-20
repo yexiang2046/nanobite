@@ -1,6 +1,6 @@
 // FeatureCounts for transcript quantification (original - kept for backward compatibility)
 process featurecounts {
-    container 'biocontainers/subread:v1.6.3dfsg-1-deb_cv1'
+    container 'biocontainers/subread:2.0.6--he4a0461_2'
     publishDir "${params.output_dir}/featurecounts", mode: 'copy'
 
     input:
@@ -38,7 +38,7 @@ process featurecounts {
 
 // FeatureCounts optimized for genome-aligned DRS data with configurable multi-mapper handling
 process featurecounts_genome_aligned {
-    container 'biocontainers/subread:v1.6.3dfsg-1-deb_cv1'
+    container 'biocontainers/subread:2.0.6--he4a0461_2'
     publishDir "${params.output_dir}/featurecounts", mode: 'copy'
 
     input:
